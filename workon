@@ -89,6 +89,25 @@ cmd_roots() {
 }
 
 # ============================================================
+cmd_print() {
+  require_fzf
+
+  local path name act
+  path="$(select_from_index_fzf)" || exit 0
+  [[ -n "${path:-}" ]] || exit 0
+  [[ -d "$path" ]] || exit 0
+
+  name="$(basename "$path")"
+  index_update_last_used "$name" "$path"
+
+  printf "cd -- %q\n" "$path"
+
+  act="$path/.venv/bin/activate"
+  if [[ -f "$act" ]]; then
+    printf "source -- %q\n" "$act"
+  fi
+}
+
 # Entry point
 # ============================================================
 case "${1:-}" in
@@ -97,6 +116,7 @@ case "${1:-}" in
   --add-root) roots_add "${2:-}" ;;
   --rm-root) roots_rm "${2:-}" ;;
   --roots) cmd_roots ;;
+  --print) cmd_print ;;
   --reindex) do_reindex ;;
   --reindex-if-due) reindex_if_due ;;
   --forget) index_forget "${2:-}" ;;
