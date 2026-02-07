@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+WORKON_DIR="/usr/lib/workon"
+LIB_DIR="$WORKON_DIR/lib"
+
+[[ -d "$LIB_DIR" ]] || { echo "workon: lib dir not found: $LIB_DIR" >&2; exit 1; }
+
+# shellcheck source=/dev/null
+source "$LIB_DIR/util.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/systemd.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/roots.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/index.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/project.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/reindex.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/select.sh"
+
+require_fzf() {
+  command -v fzf >/dev/null 2>&1 || die "fzf is required (install: sudo apt install fzf)"
+}
+
+# ============================================================
+# Commands
+# ============================================================
+cmd_status() {
+  echo "workon status"
+  echo "  config: $CONFIG_FILE"
+  echo "  index : $INDEX_FILE"
+  echo "  fzf   : $(command -v fzf >/dev/null && echo yes || echo no) (required)"
+  echo "  roots :"
+  local i=1
+  if roots_list | grep -q .; then
+    while IFS= read -r r; do
+      echo "    $i) $r"
+      i=$((i+1))
+    done < <(roots_list)
+  else
+    echo "    (none)"
+  fi
+  echo "  index entries: $(wc -l < "$INDEX_FILE" 2>/dev/null || echo 0)"
+  echo "  reindex.mode: $(get_config reindex.mode || echo off)"
+  echo "  reindex.days: $(get_config reindex.days || echo "$DEFAULT_REINDEX_DAYS")"
+}
+
+cmd_set() {
+  case "${1:-}" in
+    reindex.mode)
+      case "${2:-}" in
+        off|shell)
+          systemd_disable "$BOOT_TIMER"
+          systemd_disable "$AUTO_TIMER"
+          ;;
+        boot)
+          systemd_disable "$AUTO_TIMER"
+          systemd_enable "$BOOT_TIMER"
+          ;;
+        auto)
+          systemd_disable "$BOOT_TIMER"
+          systemd_enable "$AUTO_TIMER"
+          ;;
+        *)
+          die "Invalid reindex.mode: ${2:-} (use: off|shell|boot|auto)"
+          ;;
+      esac
+      set_config reindex.mode "${2:-}"
+      ;;
+    reindex.days)
+      [[ "${2:-}" =~ ^[0-9]+$ ]] || die "reindex.days must be a positive integer"
+      set_config reindex.days "${2:-}"
+      ;;
+    *)
+      die "Unknown config key: ${1:-}"
+      ;;
+  esac
+}
+
+cmd_roots() {
+  if roots_list | grep -q .; then
+    roots_list
+  else
+    echo "(none)"
+  fi
+}
+
+# ============================================================
+# Entry point
+# ============================================================
+case "${1:-}" in
+  --status) cmd_status ;;
+  --set) cmd_set "${2:-}" "${3:-}" ;;
+  --add-root) roots_add "${2:-}" ;;
+  --rm-root) roots_rm "${2:-}" ;;
+  --roots) cmd_roots ;;
+  --reindex) do_reindex ;;
+  --reindex-if-due) reindex_if_due ;;
+  --forget) index_forget "${2:-}" ;;
+
+  # internal for fzf reload
+  --_fzf-source) fzf_source_print ;;
+  --_fzf-reindex-source)
+    do_reindex >/dev/null
+    fzf_source_print
+    ;;
+
+  .)
+    dir="$(find_project_upwards || true)"
+    [[ -n "${dir:-}" ]] || die "no project found upwards"
+    cd "$dir"
+    activate_venv_if_present "$dir"
+    ;;
+  "")
+    require_fzf
+    path="$(select_from_index_fzf)" || exit 0
+    open_project "$path"
+    ;;
+  *)
+    mapfile -t paths < <(resolve_name_to_paths "$1" || true)
+    (( ${#paths[@]} > 0 )) || die "project not found: $1 (did you run --reindex?)"
+
+    if (( ${#paths[@]} == 1 )); then
+      open_project "${paths[0]}"
+    else
+      require_fzf
+      path="$(choose_ambiguity_fzf "$1" "${paths[@]}")" || exit 0
+      open_project "$path"
+    fi
+    ;;
+esac
+
