@@ -48,7 +48,8 @@ REQUIREMENTS
 
 - Bash >= 4.3
 - fzf (required)
-- systemd (optional, for auto/boot reindex)
+- systemd (optional, for auto/boot reindex; units are generated under ~/.config/systemd/user)
+- wl-clipboard or xclip or xsel (optional, for Ctrl-Y copy)
 - bat, tree (optional, preview quality)
 
 Ubuntu example:
@@ -116,6 +117,7 @@ Type    : filter
 Enter   : open project
 Ctrl-R  : reindex and reload
 Ctrl-O  : open folder
+Ctrl-Y  : copy path to clipboard (silent)
 Esc     : cancel
 
 ---
@@ -136,6 +138,10 @@ workon --reindex
 
 Status:
 workon --status
+
+Copy feedback (optional):
+workon --set ui.copy_feedback on
+workon --set ui.copy_feedback off
 
 ---
 

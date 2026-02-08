@@ -11,14 +11,15 @@ CONFIG_FILE="$CONFIG_DIR/config"
 STATE_FILE="$CACHE_DIR/state"
 INDEX_FILE="$CACHE_DIR/index.tsv"
 
-SYSTEMD_USER_DIR="/usr/lib/systemd/user"
+SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 BOOT_TIMER="workon-reindex-boot.timer"
 AUTO_TIMER="workon-reindex-auto.timer"
 
 DEFAULT_REINDEX_DAYS=10
 
-mkdir -p "$CONFIG_DIR" "$CACHE_DIR"
+mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$SYSTEMD_USER_DIR"
 touch "$INDEX_FILE"
+touch "$STATE_FILE"
 
 # ============================================================
 # Generic helpers

@@ -79,6 +79,12 @@ cmd_set() {
       esac
       set_config reindex.mode "${2:-}"
       ;;
+    ui.copy_feedback)
+      case "${2:-}" in
+        on|off) set_config ui.copy_feedback "${2:-}" ;;
+        *) die "ui.copy_feedback must be: on|off" ;;
+      esac
+      ;;
     reindex.days)
       [[ "${2:-}" =~ ^[0-9]+$ ]] || die "reindex.days must be a positive integer"
       set_config reindex.days "${2:-}"

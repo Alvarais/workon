@@ -74,28 +74,32 @@ __workon_copy_path() {
   if [[ "$p" =~ ^\".*\"$ ]]; then p="${p:1:${#p}-2}"; fi
 
   local copied=0
-  
-  # Try Wayland clipboard (modern Linux)
+
+  # Wayland (preferred)
   if has_cmd wl-copy; then
     printf "%s" "$p" | wl-copy 2>/dev/null && copied=1
   fi
-  
-  # Try X11 clipboard tools
+
+  # X11 fallbacks
   if [[ $copied -eq 0 ]] && has_cmd xclip; then
     printf "%s" "$p" | xclip -selection clipboard 2>/dev/null && copied=1
   fi
-  
   if [[ $copied -eq 0 ]] && has_cmd xsel; then
     printf "%s" "$p" | xsel --clipboard --input 2>/dev/null && copied=1
   fi
-  
-  # Show feedback
-  if [[ $copied -ne 1 ]]; then
-  # opcional: log interno ou absolutamente nada
-  :
-fi
-  
-  exit 0
+
+  # Silent by default: no notify-send and no stdout/stderr.
+  # Optional feedback:
+  #   workon --set ui.copy_feedback on
+  if [[ $copied -eq 1 ]]; then
+    if [[ "$(get_config ui.copy_feedback 2>/dev/null || true)" == "on" ]]; then
+      notify-send -t 1200 "workon" "Copied path" 2>/dev/null || true
+    fi
+    exit 0
+  fi
+
+  # No clipboard tool found (stay silent; non-zero exit for debugging)
+  exit 1
 }
 
 export -f __workon_preview __workon_open_folder __workon_copy_path has_cmd
