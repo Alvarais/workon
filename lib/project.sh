@@ -2,8 +2,8 @@
 set -euo pipefail
 
 is_project_dir() {
-  local dir=""
-  [[ -f "/.venv/bin/activate" ]]
+  local dir="$1"
+  [[ -f "$dir/.venv/bin/activate" ]]
 }
 
 find_project_upwards() {

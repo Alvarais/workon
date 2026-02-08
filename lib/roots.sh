@@ -35,7 +35,7 @@ roots_rm() {
 }
 
 ensure_default_root() {
-  # Portabilidade: default em ~/Projects (sem assumir pt_BR)
+  # Default to ~/Projects for portability
   if ! roots_list | grep -q .; then
     local default="$HOME/Projects"
     mkdir -p "$default"

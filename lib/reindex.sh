@@ -14,8 +14,8 @@ do_reindex() {
   for r in "${roots[@]}"; do
     [[ -d "$r" ]] || continue
 
-    # Apenas 1 nível abaixo do root
-        for dir in "$r"/*; do
+    # Only 1 level below root
+    for dir in "$r"/*; do
       [[ -d "$dir" ]] || continue
       base="$(basename "$dir")"
 

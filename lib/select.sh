@@ -73,15 +73,28 @@ __workon_copy_path() {
   if [[ "$p" =~ ^\'.*\'$ ]]; then p="${p:1:${#p}-2}"; fi
   if [[ "$p" =~ ^\".*\"$ ]]; then p="${p:1:${#p}-2}"; fi
 
+  local copied=0
+  
+  # Try Wayland clipboard (modern Linux)
   if has_cmd wl-copy; then
-    printf "%s" "$p" | wl-copy; exit 0
+    printf "%s" "$p" | wl-copy 2>/dev/null && copied=1
   fi
-  if has_cmd xclip; then
-    printf "%s" "$p" | xclip -selection clipboard; exit 0
+  
+  # Try X11 clipboard tools
+  if [[ $copied -eq 0 ]] && has_cmd xclip; then
+    printf "%s" "$p" | xclip -selection clipboard 2>/dev/null && copied=1
   fi
-  if has_cmd xsel; then
-    printf "%s" "$p" | xsel --clipboard --input; exit 0
+  
+  if [[ $copied -eq 0 ]] && has_cmd xsel; then
+    printf "%s" "$p" | xsel --clipboard --input 2>/dev/null && copied=1
   fi
+  
+  # Show feedback
+  if [[ $copied -ne 1 ]]; then
+  # opcional: log interno ou absolutamente nada
+  :
+fi
+  
   exit 0
 }
 
@@ -163,10 +176,11 @@ select_from_index_fzf() {
   local src_cmd="workon --_fzf-source"
   local reload_cmd="workon --_fzf-reindex-source"
 
-  # Pass path as $1 to bash -lc (no quoting bugs)
-  local preview_cmd='bash -lc "__workon_preview \"\$1\"" _ {3}'
-  local open_cmd='bash -lc "__workon_open_folder \"\$1\"" _ {3}'
-  local copy_cmd='bash -lc "__workon_copy_path \"\$1\"" _ {3}'
+  # Use bash without -l flag and source the functions directly
+  # This ensures exported functions are available
+  local preview_cmd='bash -c "__workon_preview \"\$1\"" _ {3}'
+  local open_cmd='bash -c "__workon_open_folder \"\$1\"" _ {3}'
+  local copy_cmd='bash -c "__workon_copy_path \"\$1\"" _ {3}'
 
   $src_cmd \
     | fzf \
@@ -181,12 +195,12 @@ select_from_index_fzf() {
         --with-nth=2 \
         --header-lines=2 \
         --tiebreak=index \
-        --header=$'↑/↓ move | Type: filter\nEnter: select | Esc: cancel\nCtrl-R: reindex+reload\nCtrl-O: open folder \nCtrl-C: copy path\n' \
+        --header=$'↑/↓ move | Type: filter\nEnter: select | Esc/Ctrl-C: cancel\nCtrl-R: reindex+reload\nCtrl-O: open folder\nCtrl-Y: copy path\n' \
         --preview="$preview_cmd" \
         --preview-window='right:60%:wrap' \
         --bind "ctrl-r:reload($reload_cmd)" \
         --bind "ctrl-o:execute-silent($open_cmd)" \
-        --bind "ctrl-c:execute-silent($copy_cmd)" \
+        --bind "ctrl-y:execute-silent($copy_cmd)" \
     | awk -F'\t' '
         # Only real selectable projects: ITEM + real path
         $1=="ITEM" && $3 != "" && $3 != "__HDR__" && $3 != "__SEP__" {print $3; exit}

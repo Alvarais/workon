@@ -44,8 +44,17 @@ cmd_status() {
     echo "    (none)"
   fi
   echo "  index entries: $(wc -l < "$INDEX_FILE" 2>/dev/null || echo 0)"
-  echo "  reindex.mode: $(get_config reindex.mode || echo off)"
-  echo "  reindex.days: $(get_config reindex.days || echo "$DEFAULT_REINDEX_DAYS")"
+  
+  local mode days
+  mode="$(get_config reindex.mode 2>/dev/null || true)"
+  mode="${mode:-off}"
+  echo "  reindex.mode: $mode"
+  if [[ "$mode" == "auto" ]]; then
+    days="$(get_config reindex.days 2>/dev/null || true)"
+    days="${days:-$DEFAULT_REINDEX_DAYS}"
+    echo "  reindex.days: $days"
+  fi
+  
 }
 
 cmd_set() {
